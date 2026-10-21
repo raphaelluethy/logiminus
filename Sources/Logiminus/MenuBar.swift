@@ -72,6 +72,9 @@ final class MenuBar: NSObject, NSMenuDelegate {
         menu.addItem(submenu("Pointer speed", [("Slow", 0.5), ("Normal", 1.0), ("Fast", 1.6), ("Very fast", 2.5)].map { t, v in
             action(t, #selector(setSpeed(_:)), checked: abs(settings.pointerSpeed - v) < 0.01, rep: v)
         }))
+        menu.addItem(submenu("Pointer size", [("Tiny", 7.0), ("Small", 11.0), ("Medium", 16.0), ("Large", 22.0)].map { t, v in
+            action(t, #selector(setPointerSize(_:)), checked: abs(settings.pointerSize - v) < 0.01, rep: v)
+        }))
         menu.addItem(submenu("Spotlight size", [("Small", 0.12), ("Medium", 0.18), ("Large", 0.26)].map { t, v in
             action(t, #selector(setSize(_:)), checked: abs(settings.spotlightSize - v) < 0.01, rep: v)
         }))
@@ -143,6 +146,7 @@ final class MenuBar: NSObject, NSMenuDelegate {
     @objc private func setHard(_ i: NSMenuItem) { settings.hardEffect = Effect(rawValue: i.representedObject as! String)! }
     @objc private func setStartScreen(_ i: NSMenuItem) { settings.startScreen = i.representedObject as! String }
     @objc private func setSpeed(_ i: NSMenuItem) { settings.pointerSpeed = i.representedObject as! Double }
+    @objc private func setPointerSize(_ i: NSMenuItem) { settings.pointerSize = i.representedObject as! Double }
     @objc private func setSize(_ i: NSMenuItem) { settings.spotlightSize = i.representedObject as! Double }
     @objc private func setDim(_ i: NSMenuItem) { settings.dimOpacity = i.representedObject as! Double }
     @objc private func toggleHaptics() {

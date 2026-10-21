@@ -43,7 +43,7 @@ final class Settings {
             "pointerSpeed": 1.0,
             "spotlightSize": 0.18,     // radius as a fraction of screen height
             "dimOpacity": 0.75,
-            "pointerSize": 16.0,
+            "pointerSize": 11.0,
             "hapticsEnabled": true,
             "hapticLevel": 35,
             "timerMinutes": 0,
