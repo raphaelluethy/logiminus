@@ -133,6 +133,7 @@ final class MenuBar: NSObject, NSMenuDelegate {
         menu.addItem(submenu("Presentation timer", timer))
 
         menu.addItem(.separator())
+        menu.addItem(action("Open at Login", #selector(toggleLogin), checked: LoginItem.isEnabled))
         menu.addItem(action("Quit Logiminus", #selector(quit), key: "q"))
     }
 
@@ -191,5 +192,8 @@ final class MenuBar: NSObject, NSMenuDelegate {
     @objc private func stopTimer() { agent.timer.stop(); refresh() }
     @objc private func setTimer(_ i: NSMenuItem) { settings.timerMinutes = i.representedObject as! Int }
     @objc private func toggleTimerWithPresentation() { settings.startTimerWithPresentation.toggle() }
+    @objc private func toggleLogin() {
+        if let err = LoginItem.set(!LoginItem.isEnabled) { Log.info("login item: \(err)") }
+    }
     @objc private func quit() { agent.quit() }
 }

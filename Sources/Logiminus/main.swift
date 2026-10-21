@@ -8,6 +8,7 @@ usage:
   logiminus enable | disable | toggle | status   control the running menu bar agent
   logiminus haptic <waveform>                     play a haptic waveform on the remote
   logiminus timer start | stop                    presentation timer
+  logiminus login on | off | status               open the app at login
   logiminus quit                                  quit the agent
   logiminus agent                                 run the menu bar agent in the foreground
   logiminus monitor                               (debug) print HID++ traffic, no agent
@@ -62,7 +63,7 @@ case "agent", "run":
 case "enable", "toggle":
     guard let r = launchAgentAndSend(args.joined(separator: " ")) else { exit(1) }
     print(r)
-case "disable", "status", "haptic", "timer", "quit":
+case "disable", "status", "haptic", "timer", "login", "quit":
     guard let r = IPC.send(args.joined(separator: " ")) else {
         print(args.first == "status" ? "not running" : "agent not running")
         exit(args.first == "disable" || args.first == "quit" ? 0 : 1)

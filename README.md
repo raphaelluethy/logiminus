@@ -47,7 +47,7 @@ starts the app. Then:
    It is needed to send the arrow keys.
 2. **Quit Logi Options+** — two apps can't drive the remote at once. To stop it until the next
    login: `launchctl bootout gui/$(id -u)/com.logi.cp-dev-mgr`.
-3. Optional: add Logiminus to System Settings → General → Login Items.
+3. Optional: menu bar icon → **Open at Login** (or `logiminus login on`).
 
 The build is signed with your first Apple Development identity if you have one (so the
 Accessibility permission survives rebuilds), otherwise ad-hoc. Override with
@@ -63,14 +63,16 @@ logiminus disable     # hand the buttons back to the remote's built-in behaviour
 logiminus toggle
 logiminus status      # e.g. "enabled · Spotlight 2 connected · battery 50%"
 logiminus timer start 20 | stop
+logiminus login on | off  # open at login
 logiminus haptic 17   # play a vibration pattern
 logiminus quit
 ```
 
 ### Raycast
 
-The `raycast/` folder contains script commands for enable, disable and toggle. In Raycast:
-Settings → Extensions → Script Commands → Add Directories → pick the `raycast` folder.
+The `raycast/` folder has script commands **Logi On**, **Logi Off** and **Logi Toggle**. In
+Raycast: Settings → Extensions → Script Commands → Add Directories → pick the `raycast`
+folder (or copy the scripts into your existing script folder).
 
 ## How it works
 
@@ -80,3 +82,7 @@ receives the gyro motion as raw XY deltas, and drives the haptics motor (`0x19B0
 notes from reverse engineering are in [docs/protocol.md](docs/protocol.md).
 
 `logiminus monitor [--divert] [-v]` prints the device traffic for debugging.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

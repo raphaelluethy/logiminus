@@ -96,6 +96,15 @@ final class Agent: NSObject {
             case "stop": timer.stop(); menu.refresh(); return "timer stopped"
             default: return "error: usage: timer start [minutes] | stop"
             }
+        case "login":
+            switch parts.count > 1 ? parts[1] : "" {
+            case "on", "off":
+                if let err = LoginItem.set(parts[1] == "on") { return "error: \(err)" }
+                menu.refresh()
+                return "open at login: \(LoginItem.statusText)"
+            case "", "status": return "open at login: \(LoginItem.statusText)"
+            default: return "error: usage: login on | off | status"
+            }
         case "quit":
             DispatchQueue.main.async { self.quit() }
             return "bye"
