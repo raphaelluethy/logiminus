@@ -46,7 +46,7 @@ final class SpotlightController {
 
     // ctl queue state
     private var device: HIDPPDevice?
-    private var linked = false   // the attached device is currently awake/connected
+    private var link = LinkTracker()   // is the attached device currently awake/connected
     private var transports: [HIDPPTransport] = []
     private var notSpotlight: Set<String> = []
     private var wantDiverted: Bool
@@ -96,7 +96,7 @@ final class SpotlightController {
         let rescan = DispatchSource.makeTimerSource(queue: ctl)
         rescan.schedule(deadline: .now() + 10, repeating: 10)
         rescan.setEventHandler { [weak self] in
-            guard let self, self.device == nil || !self.linked else { return }
+            guard let self, self.device == nil || !self.link.linked else { return }
             self.transports.forEach(self.scan)
         }
         rescan.resume()
@@ -153,7 +153,7 @@ final class SpotlightController {
     private func key(_ t: HIDPPTransport, _ i: UInt8) -> String { "\(t.location)/\(i)" }
 
     private func scan(_ t: HIDPPTransport) {
-        guard device == nil || !linked else { return }
+        guard device == nil || !link.linked else { return }
         // Receivers multiplex up to 6 devices; 0xFF addresses a directly connected one.
         for i: UInt8 in t.isBluetooth ? [0xFF] : [1, 2, 3, 4, 5, 6] {
             if probe(t, index: i) { return }
@@ -162,7 +162,7 @@ final class SpotlightController {
 
     @discardableResult
     private func probe(_ t: HIDPPTransport, index: UInt8) -> Bool {
-        guard device == nil || !linked, !notSpotlight.contains(key(t, index)) else { return false }
+        guard device == nil || !link.linked, !notSpotlight.contains(key(t, index)) else { return false }
         let d = HIDPPDevice(transport: t, index: index)
         do {
             // A sleeping device answers "offline" (or not at all) until the ping wakes it up.
@@ -194,7 +194,7 @@ final class SpotlightController {
     private func attach(_ d: HIDPPDevice, name: String) {
         device = d
         originalLayers = [:]
-        linked = true
+        link.update(true)
         do {
             let reprog = try d.featureIndex(Feature.reprogControls)
             let wireless = try? d.featureIndex(Feature.wirelessStatus)
@@ -224,7 +224,7 @@ final class SpotlightController {
 
     private func detach() {
         device = nil
-        linked = false
+        link.update(false)
         routeLock.lock(); route = nil; routeLock.unlock()
         DispatchQueue.main.async {
             self.status.connected = false
@@ -301,22 +301,25 @@ final class SpotlightController {
         if r[2] == 0x41, r.count >= 5 {
             let index = r[1], linked = r[4] & 0x40 == 0
             Log.info(String(format: "receiver %08x: device %d %@", t.location, index, linked ? "connected" : "disconnected"))
-            ctl.asyncAfter(deadline: .now() + (linked ? 0.2 : 0)) {
+            ctl.async {
                 let ours = self.device.map { $0.transport === t && $0.index == index } ?? false
                 if ours {
-                    self.linked = linked
+                    // Apply state in arrival order; only the configuration work is delayed.
+                    let generation = self.link.update(linked)
                     DispatchQueue.main.async {
                         self.status.connected = linked
                         self.onStatus?(self.status)
                         if !linked { self.onButtons?([]) }
                     }
-                    if linked, let d = self.device {
+                    guard linked else { return }
+                    self.ctl.asyncAfter(deadline: .now() + 0.2) {
+                        guard self.link.isCurrent(generation), let d = self.device else { return }
                         self.configure(d)
                         self.readBattery(d)
                     }
-                } else if linked && (self.device == nil || !self.linked) {
+                } else if linked && (self.device == nil || !self.link.linked) {
                     // The Spotlight 2 occupies more than one receiver slot and may come back on another one.
-                    self.probe(t, index: index)
+                    self.ctl.asyncAfter(deadline: .now() + 0.2) { self.probe(t, index: index) }
                 }
             }
             return
@@ -348,4 +351,20 @@ final class SpotlightController {
             Log.debug("event: \(hex(r))")
         }
     }
+}
+
+/// Orders link notifications: state changes apply immediately, and delayed
+/// configuration only runs if no newer notification arrived in the meantime.
+struct LinkTracker {
+    private(set) var linked = false
+    private(set) var generation: UInt64 = 0
+
+    @discardableResult
+    mutating func update(_ linked: Bool) -> UInt64 {
+        self.linked = linked
+        generation &+= 1
+        return generation
+    }
+
+    func isCurrent(_ generation: UInt64) -> Bool { linked && generation == self.generation }
 }

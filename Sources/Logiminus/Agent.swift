@@ -7,7 +7,6 @@ final class Agent: NSObject {
     let settings = Settings.shared
     let controller: SpotlightController
     private var overlay: Overlay!
-    private let presentation = PresentationControl()
     private let screens = ScreenPicker()
     private var menu: MenuBar!
     private var server: IPC.Server!
@@ -22,6 +21,18 @@ final class Agent: NSObject {
     }
 
     func start() {
+        // Claim the control socket first: a second instance must not touch the device.
+        server = IPC.Server { [weak self] in self?.command($0) ?? "error" }
+        do {
+            try server.start()
+        } catch IPC.ServerError.alreadyRunning {
+            Log.info("another Logiminus agent is already running")
+            FileHandle.standardError.write(Data("logiminus: another agent is already running\n".utf8))
+            exit(0)
+        } catch {
+            Log.info("control socket: \(error)")
+        }
+
         overlay = Overlay()
         menu = MenuBar(agent: self)
         controller.onButtons = { [weak self] in self?.buttons($0) }
@@ -33,9 +44,6 @@ final class Agent: NSObject {
         }
         timer.onTick = { [weak self] in self?.menu.refresh() }
         controller.start()
-
-        server = IPC.Server { [weak self] in self?.command($0) ?? "error" }
-        do { try server.start() } catch { Log.info("control socket: \(error)") }
 
         if !Keys.accessibilityTrusted { Keys.promptForAccessibility() }
 
@@ -90,7 +98,13 @@ final class Agent: NSObject {
         case "timer":
             switch parts.count > 1 ? parts[1] : "" {
             case "start":
-                let minutes = parts.count > 2 ? Int(parts[2]) ?? settings.timerMinutes : settings.timerMinutes
+                var minutes = settings.timerMinutes
+                if parts.count > 2 {
+                    guard let m = Int(parts[2]), PresentationTimer.validMinutes.contains(m) else {
+                        return "error: minutes must be 1–\(PresentationTimer.validMinutes.upperBound)"
+                    }
+                    minutes = m
+                }
                 guard minutes > 0 else { return "error: no timer duration set" }
                 timer.start(minutes: minutes); menu.refresh(); return "timer started (\(minutes) min)"
             case "stop": timer.stop(); menu.refresh(); return "timer stopped"
@@ -147,18 +161,20 @@ final class Agent: NSObject {
             Keys.tap(kVK_RightArrow)
         case CID.back:
             Keys.tap(kVK_LeftArrow)
-        case CID.backHold where screens.presentationScreen() != nil || presentation.presenting:
+        case CID.topTap where settings.tapAction == .click:
+            Keys.click()
+        case CID.backHold where screens.presentationScreen() != nil:
             // During a presentation: let the app black the screen (⇧B in Keynote, PowerPoint, Google Slides).
             Keys.tap(kVK_ANSI_B, .maskShift)
         case CID.backHold:
             // Fast backwards: keep stepping while held (Options+: 200 ms then every 75 ms).
             Keys.tap(kVK_LeftArrow)
             repeatTimer?.invalidate()
-            repeatTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false) { [weak self] _ in
-                self?.repeatTimer = Timer.scheduledTimer(withTimeInterval: 0.075, repeats: true) { _ in Keys.tap(kVK_LeftArrow) }
+            repeatTimer = Timer.common(after: 0.2) { [weak self] _ in
+                self?.repeatTimer = Timer.common(after: 0.075, repeating: true) { _ in Keys.tap(kVK_LeftArrow) }
             }
         case CID.startStop:
-            if presentation.toggle() {
+            if PresentationControl.toggle(presenting: screens.presentationScreen() != nil) {
                 if settings.startTimerWithPresentation && settings.timerMinutes > 0 { timer.start(minutes: settings.timerMinutes) }
             } else {
                 timer.stop()
@@ -222,15 +238,18 @@ final class PresentationTimer {
 
     var remaining: TimeInterval? { endDate.map { max(0, $0.timeIntervalSinceNow) } }
 
+    static let validMinutes = 1...600
+
     func start(minutes: Int) {
-        let end = Date().addingTimeInterval(TimeInterval(minutes * 60))
+        let minutes = min(max(minutes, Self.validMinutes.lowerBound), Self.validMinutes.upperBound)
+        let end = Date().addingTimeInterval(TimeInterval(minutes) * 60)
         endDate = end
         alerts = [(end, true)]
         for warn in [5, 1] where minutes > warn {
             alerts.append((end.addingTimeInterval(TimeInterval(-warn * 60)), false))
         }
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.tick() }
+        timer = Timer.common(after: 1, repeating: true) { [weak self] _ in self?.tick() }
     }
 
     func stop() {
@@ -248,5 +267,14 @@ final class PresentationTimer {
             onAlert?(a.1)
         }
         if alerts.isEmpty { stop() } else { onTick?() }
+    }
+}
+
+extension Timer {
+    /// A main-run-loop timer in the common modes, so it keeps firing while a menu is open.
+    static func common(after interval: TimeInterval, repeating: Bool = false, _ block: @escaping (Timer) -> Void) -> Timer {
+        let t = Timer(timeInterval: interval, repeats: repeating, block: block)
+        RunLoop.main.add(t, forMode: .common)
+        return t
     }
 }

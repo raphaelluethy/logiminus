@@ -96,10 +96,17 @@ final class MenuBar: NSObject, NSMenuDelegate {
             action("Screen with mouse pointer", #selector(setStartScreen(_:)), checked: settings.startScreen == ScreenPicker.mouse, rep: ScreenPicker.mouse),
             NSMenuItem.separator(),
         ]
-        start += NSScreen.screens.map { s in
-            action(s.localizedName, #selector(setStartScreen(_:)), checked: settings.startScreen == s.localizedName, rep: s.localizedName)
+        let names = NSScreen.screens.map(\.localizedName)
+        start += NSScreen.screens.enumerated().map { i, s in
+            let id = s.uuid ?? s.localizedName
+            // Tell identical monitors apart.
+            let title = names.filter { $0 == s.localizedName }.count > 1 ? "\(s.localizedName) (\(i + 1))" : s.localizedName
+            return action(title, #selector(setStartScreen(_:)), checked: settings.startScreen == id, rep: id)
         }
         menu.addItem(submenu("Start on", start))
+        menu.addItem(submenu("Top button tap", TapAction.allCases.map { a in
+            action(a.title, #selector(setTapAction(_:)), checked: settings.tapAction == a, rep: a.rawValue)
+        }))
         menu.addItem(submenu("Pointer speed", [("Slow", 0.5), ("Normal", 1.0), ("Fast", 1.6), ("Very fast", 2.5)].map { t, v in
             action(t, #selector(setSpeed(_:)), checked: abs(settings.pointerSpeed - v) < 0.01, rep: v)
         }))
@@ -179,6 +186,7 @@ final class MenuBar: NSObject, NSMenuDelegate {
     }
     @objc private func setLight(_ i: NSMenuItem) { settings.lightEffect = Effect(rawValue: i.representedObject as! String)! }
     @objc private func setHard(_ i: NSMenuItem) { settings.hardEffect = Effect(rawValue: i.representedObject as! String)! }
+    @objc private func setTapAction(_ i: NSMenuItem) { settings.tapAction = TapAction(rawValue: i.representedObject as! String)! }
     @objc private func setStartScreen(_ i: NSMenuItem) { settings.startScreen = i.representedObject as! String }
     @objc private func setSpeed(_ i: NSMenuItem) { settings.pointerSpeed = i.representedObject as! Double }
     @objc private func setPointerSize(_ i: NSMenuItem) { settings.pointerSize = i.representedObject as! Double }

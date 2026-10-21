@@ -15,6 +15,14 @@ enum Keys {
         }
     }
 
+    /// Left click at the current mouse position.
+    static func click() {
+        let p = CGEvent(source: nil)?.location ?? .zero
+        for type in [CGEventType.leftMouseDown, .leftMouseUp] {
+            CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap)
+        }
+    }
+
     static var accessibilityTrusted: Bool { AXIsProcessTrusted() }
 
     static func promptForAccessibility() {
@@ -24,28 +32,17 @@ enum Keys {
 }
 
 /// Start/stop the slideshow in whatever presentation app is in front.
-final class PresentationControl {
-    private(set) var presenting = false
-    private var presentingApp: String?
-
-    init() {
-        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification,
-                                                          object: nil, queue: .main) { [weak self] n in
-            let app = n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            if let self, self.presenting, app?.bundleIdentifier != self.presentingApp { self.presenting = false }
-        }
-    }
-
+enum PresentationControl {
+    /// `presenting` comes from window detection (a full-screen slideshow is up), so
+    /// switching apps or ending the show from the keyboard can't desync it.
     /// Returns true when a presentation was started (false when stopped).
     @discardableResult
-    func toggle() -> Bool {
-        let bundle = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? ""
+    static func toggle(presenting: Bool) -> Bool {
         if presenting {
             Keys.tap(kVK_Escape)
-            presenting = false
             return false
         }
-        switch bundle {
+        switch NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "" {
         case "com.apple.iWork.Keynote":
             Keys.tap(kVK_ANSI_P, [.maskCommand, .maskAlternate])
         case "com.microsoft.Powerpoint":
@@ -54,8 +51,6 @@ final class PresentationControl {
             // Google Slides & most web/other presenters.
             Keys.tap(kVK_Return, [.maskCommand])
         }
-        presenting = true
-        presentingApp = bundle
         return true
     }
 }

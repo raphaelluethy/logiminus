@@ -17,6 +17,12 @@ enum Log {
     }
 }
 
+enum TapAction: String, CaseIterable {
+    case none, click
+
+    var title: String { self == .none ? "Nothing" : "Left click" }
+}
+
 enum Effect: String, CaseIterable {
     case pointer, spotlight, none
 
@@ -49,6 +55,7 @@ final class Settings {
             "timerMinutes": 0,
             "startTimerWithPresentation": true,
             "startScreen": "auto",
+            "tapAction": TapAction.none.rawValue,
         ])
     }
 
@@ -68,7 +75,11 @@ final class Settings {
     var hapticsEnabled: Bool { get { d.bool(forKey: "hapticsEnabled") } set { d.set(newValue, forKey: "hapticsEnabled") } }
     var hapticLevel: Int { get { d.integer(forKey: "hapticLevel") } set { d.set(newValue, forKey: "hapticLevel") } }
     var timerMinutes: Int { get { d.integer(forKey: "timerMinutes") } set { d.set(newValue, forKey: "timerMinutes") } }
-    /// "auto", "mouse" or a display's localized name.
+    var tapAction: TapAction {
+        get { TapAction(rawValue: d.string(forKey: "tapAction") ?? "") ?? .none }
+        set { d.set(newValue.rawValue, forKey: "tapAction") }
+    }
+    /// "auto", "mouse" or a display UUID (older versions stored the display name).
     var startScreen: String { get { d.string(forKey: "startScreen") ?? "auto" } set { d.set(newValue, forKey: "startScreen") } }
     var startTimerWithPresentation: Bool {
         get { d.bool(forKey: "startTimerWithPresentation") }

@@ -103,6 +103,7 @@ final class Overlay {
             return Entry(panel: panel, view: view, screen: screen)
         }
         active = nil
+        position = clamp(position)   // the old spot may no longer be on any display
         if wasEffect != .none { show(wasEffect, at: position) }
     }
 

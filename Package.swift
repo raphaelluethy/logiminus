@@ -14,6 +14,12 @@ let package = Package(
                 .linkedFramework("AppKit"),
                 .linkedFramework("QuartzCore"),
             ]
-        )
+        ),
+        .testTarget(
+            name: "LogiminusTests",
+            dependencies: ["logiminus"],
+            path: "Tests/LogiminusTests",
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
     ]
 )

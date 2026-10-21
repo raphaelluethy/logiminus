@@ -17,13 +17,16 @@ enum Monitor {
         }
         c.onStatus = { s in print("status:", s) }
         c.start()
-        let sig = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
-        signal(SIGINT, SIG_IGN)
-        sig.setEventHandler {
-            if divert { c.restoreNative() }
-            exit(0)
+        let sources = [SIGINT, SIGTERM].map { s in
+            signal(s, SIG_IGN)
+            let src = DispatchSource.makeSignalSource(signal: s, queue: .main)
+            src.setEventHandler {
+                if divert { c.restoreNative() }
+                exit(0)
+            }
+            src.resume()
+            return src
         }
-        sig.resume()
         // Debug commands on stdin: "<feature hex> <function> [param bytes hex...]"
         DispatchQueue.global().async {
             while let line = readLine() {
@@ -33,6 +36,6 @@ enum Monitor {
                 c.raw(feature: f, function: fn, params: params) { print("=", $0) }
             }
         }
-        withExtendedLifetime(sig) { dispatchMain() }
+        withExtendedLifetime(sources) { dispatchMain() }
     }
 }

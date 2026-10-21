@@ -14,6 +14,9 @@ usage:
   logiminus monitor                               (debug) print HID++ traffic, no agent
 """
 
+// A CLI client may vanish mid-reply (e.g. a Raycast timeout); never die of SIGPIPE.
+signal(SIGPIPE, SIG_IGN)
+
 let args = Array(CommandLine.arguments.dropFirst()).filter { !$0.hasPrefix("-psn_") }
 
 /// Path of the enclosing .app bundle, if this binary lives inside one.

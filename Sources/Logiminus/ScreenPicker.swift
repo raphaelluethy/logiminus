@@ -21,7 +21,7 @@ final class ScreenPicker {
     func startScreen(preference: String) -> NSScreen? {
         let screens = NSScreen.screens
         if preference != Self.auto && preference != Self.mouse,
-           let s = screens.first(where: { $0.localizedName == preference }) {
+           let s = screens.first(where: { $0.uuid == preference }) ?? screens.first(where: { $0.localizedName == preference }) {
             return s
         }
         if preference == Self.auto, screens.count > 1, let s = presentationScreen() { return s }
@@ -70,6 +70,12 @@ final class ScreenPicker {
 }
 
 extension NSScreen {
+    /// Stable per-display identifier (survives reboots and re-plugging, unlike the display ID).
+    var uuid: String? {
+        guard let id = displayID, let u = CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue() else { return nil }
+        return CFUUIDCreateString(nil, u) as String
+    }
+
     var displayID: CGDirectDisplayID? {
         (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
     }

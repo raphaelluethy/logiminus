@@ -16,6 +16,7 @@ remote — laser pointer, spotlight, slide navigation and haptics — without Lo
 |---|---|
 | Top button, light press + hold | Red laser dot, moved by pointing the remote |
 | Top button, hard press | Spotlight — the screen dims around a circle |
+| Top button, quick tap | Nothing by default (or a left click — menu → Top button tap) |
 | Next / Back | → / ← (next / previous slide) |
 | Hold Next | Next slide |
 | Hold Back | ⇧B (black screen) during a presentation, otherwise steps back repeatedly |
@@ -84,6 +85,7 @@ receives the gyro motion as raw XY deltas, and drives the haptics motor (`0x19B0
 notes from reverse engineering are in [docs/protocol.md](docs/protocol.md).
 
 `logiminus monitor [--divert] [-v]` prints the device traffic for debugging.
+`swift test` runs the unit tests (IPC, connection ordering, timer); they don't need the remote.
 
 ## License
 
