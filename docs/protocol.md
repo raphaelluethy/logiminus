@@ -71,4 +71,6 @@ The firmware tells click from hold itself, so a hold produces only the hold CID.
 
 Events (software id 0):
 - fn0 diverted buttons: up to 4 pressed CIDs, big-endian, zero padded
-- fn1 raw XY: `dx, dy` signed 16-bit big-endian, ~100 Hz while a raw-XY control is held
+- fn1 raw XY: `dx, dy` signed 16-bit big-endian, ~100 Hz while a raw-XY control is held.
+  Held still, the remote keeps reporting ±1-unit deltas (often several in the same direction),
+  which integrate into slow drift; deliberate motion is roughly 2–30 units per report.

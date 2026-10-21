@@ -21,9 +21,13 @@ remote — laser pointer, spotlight, slide navigation and haptics — without Lo
 | Hold Next | Next slide |
 | Hold Back | ⇧B (black screen) during a presentation, otherwise steps back repeatedly |
 
-Plus, from the menu bar: pointer/spotlight size and speed, jitter smoothing, which effect light and hard press
-trigger, haptic feedback strength, a presentation timer that vibrates 5 min and 1 min before
-the end, and the battery level.
+Plus, from the menu bar: which effect light and hard press trigger, pointer/spotlight size and
+speed, pointer smoothing, haptic feedback strength, a presentation timer that vibrates 5 min and
+1 min before the end, open at login, and the battery level.
+
+Pointer smoothing (Off / Low / Medium / High) does two things: a small dead zone drops the
+trickle of tiny movements the remote reports while held still, and a speed-adaptive filter
+(One Euro) steadies slow movement while keeping fast sweeps responsive.
 
 Works with multiple displays: the pointer starts on the screen showing your slideshow (or pick
 a display in the menu) and can be moved across screens. The overlay never takes focus and the
@@ -85,7 +89,8 @@ receives the gyro motion as raw XY deltas, and drives the haptics motor (`0x19B0
 notes from reverse engineering are in [docs/protocol.md](docs/protocol.md).
 
 `logiminus monitor [--divert] [-v]` prints the device traffic for debugging.
-`swift test` runs the unit tests (IPC, connection ordering, timer); they don't need the remote.
+`swift test` runs the unit tests (IPC, connection ordering, timer, smoothing); they don't need
+the remote, but do need full Xcode (XCTest isn't part of the command line tools).
 
 ## License
 
