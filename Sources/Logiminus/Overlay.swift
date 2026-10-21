@@ -65,6 +65,8 @@ private final class OverlayView: NSView {
 }
 
 final class Overlay {
+    /// Above full-screen slideshows; the blackout sits one level below the highlight.
+    static let level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()) + 2)
     private struct Entry { let panel: NSPanel; let view: OverlayView; let screen: NSScreen }
     private var entries: [Entry] = []
     private var active: Entry?
@@ -86,7 +88,7 @@ final class Overlay {
         entries = NSScreen.screens.map { screen in
             let panel = OverlayPanel(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel],
                                      backing: .buffered, defer: false)
-            panel.level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()) + 1)
+            panel.level = Overlay.level
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
             panel.ignoresMouseEvents = true
             panel.isOpaque = false
@@ -149,5 +151,37 @@ final class Overlay {
         let f = e.screen.frame
         e.view.render(effect: effect, at: CGPoint(x: position.x - f.minX, y: position.y - f.minY), settings: settings)
         if !e.panel.isVisible { e.panel.orderFrontRegardless() }
+    }
+}
+
+/// Covers one display in black ("blank screen" during a presentation).
+final class Blackout {
+    private var panel: NSPanel?
+    var isActive: Bool { panel != nil }
+
+    func show(on screen: NSScreen) {
+        hide()
+        let p = OverlayPanel(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel],
+                             backing: .buffered, defer: false)
+        p.level = NSWindow.Level(rawValue: Overlay.level.rawValue - 1)
+        p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        p.ignoresMouseEvents = true
+        p.isOpaque = true
+        p.backgroundColor = .black
+        p.hasShadow = false
+        p.hidesOnDeactivate = false
+        p.isReleasedWhenClosed = false
+        p.setFrame(screen.frame, display: false)
+        p.alphaValue = 0
+        p.orderFrontRegardless()
+        NSAnimationContext.runAnimationGroup { $0.duration = 0.25; p.animator().alphaValue = 1 }
+        panel = p
+    }
+
+    func hide() {
+        guard let p = panel else { return }
+        panel = nil
+        NSAnimationContext.runAnimationGroup({ $0.duration = 0.2; p.animator().alphaValue = 0 },
+                                             completionHandler: { p.orderOut(nil) })
     }
 }

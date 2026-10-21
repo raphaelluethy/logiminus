@@ -9,6 +9,7 @@ final class Agent: NSObject {
     private var overlay: Overlay!
     private let presentation = PresentationControl()
     private let screens = ScreenPicker()
+    private let blackout = Blackout()
     private var menu: MenuBar!
     private var server: IPC.Server!
     let timer = PresentationTimer()
@@ -120,6 +121,7 @@ final class Agent: NSObject {
 
     private func releaseAll() {
         buttons([])
+        blackout.hide()
     }
 
     private func buttons(_ now: Set<UInt16>) {
@@ -132,11 +134,19 @@ final class Agent: NSObject {
     }
 
     private func buttonDown(_ cid: UInt16) {
+        // While the screen is blanked, the next slide button just brings it back.
+        if blackout.isActive, [CID.next, CID.nextHold, CID.back, CID.backHold].contains(cid) {
+            blackout.hide()
+            return
+        }
         switch cid {
         case CID.next, CID.nextHold:
             Keys.tap(kVK_RightArrow)
         case CID.back:
             Keys.tap(kVK_LeftArrow)
+        case CID.backHold where screens.presentationScreen() != nil || presentation.presenting:
+            // During a presentation: blank the slideshow screen.
+            if let s = screens.presentationScreen() ?? screens.mouseScreen() { blackout.show(on: s) }
         case CID.backHold:
             // Fast backwards: keep stepping while held (Options+: 200 ms then every 75 ms).
             Keys.tap(kVK_LeftArrow)

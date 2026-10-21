@@ -5,7 +5,8 @@ a menu bar agent plus a CLI (for Raycast script commands).
 
 - Light press + hold top button → laser pointer dot, moved by the remote's gyro
 - Hard press → spotlight (dims the screen around a circle)
-- Next / Back → → / ←, holding Back steps back repeatedly
+- Next / Back → → / ←; holding Back blanks the slideshow screen during a presentation
+  (any slide button brings it back), otherwise it steps back repeatedly
 - Haptics level, presentation timer with haptic alerts, battery in the menu
 - The overlay is a non-activating panel and no event taps are installed, so it
   never steals focus or slows the keyboard

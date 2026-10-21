@@ -24,16 +24,17 @@ final class ScreenPicker {
            let s = screens.first(where: { $0.localizedName == preference }) {
             return s
         }
-        if preference == Self.auto, screens.count > 1 {
-            let candidates = fullScreenPresentationScreens()
-            if candidates.count == 1 { return candidates[0] }
-            if candidates.count > 1 {
-                if let last = lastUsed, let s = candidates.first(where: { $0.displayID == last }) { return s }
-                // Presentation apps put the slideshow on the secondary display by default.
-                return candidates.first(where: { $0 != screens.first }) ?? candidates[0]
-            }
-        }
+        if preference == Self.auto, screens.count > 1, let s = presentationScreen() { return s }
         return mouseScreen()
+    }
+
+    /// The display showing a running slideshow, or nil when nothing is presented full screen.
+    func presentationScreen() -> NSScreen? {
+        let candidates = fullScreenPresentationScreens()
+        if candidates.count <= 1 { return candidates.first }
+        if let last = lastUsed, let s = candidates.first(where: { $0.displayID == last }) { return s }
+        // Presentation apps put the slideshow on the secondary display by default.
+        return candidates.first(where: { $0 != NSScreen.screens.first }) ?? candidates[0]
     }
 
     func mouseScreen() -> NSScreen? {
