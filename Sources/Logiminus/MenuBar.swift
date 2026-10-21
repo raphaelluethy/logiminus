@@ -17,8 +17,7 @@ final class MenuBar: NSObject, NSMenuDelegate {
 
     func refresh() {
         guard let button = item.button else { return }
-        let symbol = agent.enabled ? "dot.scope" : "circle.slash"
-        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Logiminus")
+        button.image = Self.icon(enabled: agent.enabled)
         button.appearsDisabled = !agent.controller.status.connected
         if let r = agent.timer.remaining {
             button.title = " " + Self.format(r)
@@ -27,6 +26,35 @@ final class MenuBar: NSObject, NSMenuDelegate {
             button.title = ""
             button.imagePosition = .imageOnly
         }
+    }
+
+    /// Template icon matching the app icon: a pool of light around a laser dot.
+    private static func icon(enabled: Bool) -> NSImage {
+        let img = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { r in
+            let c = NSPoint(x: r.midX, y: r.midY)
+            let ring = NSBezierPath(ovalIn: r.insetBy(dx: 2.5, dy: 2.5))
+            ring.lineWidth = 1.5
+            if enabled {
+                NSColor.black.withAlphaComponent(0.35).setFill()
+                ring.fill()
+                NSColor.black.setStroke()
+                ring.stroke()
+                NSColor.black.setFill()
+                NSBezierPath(ovalIn: NSRect(x: c.x - 2.5, y: c.y - 2.5, width: 5, height: 5)).fill()
+            } else {
+                NSColor.black.setStroke()
+                ring.stroke()
+                let slash = NSBezierPath()
+                slash.move(to: NSPoint(x: r.minX + 3.5, y: r.minY + 3.5))
+                slash.line(to: NSPoint(x: r.maxX - 3.5, y: r.maxY - 3.5))
+                slash.lineWidth = 1.5
+                slash.stroke()
+            }
+            return true
+        }
+        img.isTemplate = true
+        img.accessibilityDescription = enabled ? "Logiminus (enabled)" : "Logiminus (disabled)"
+        return img
     }
 
     private static func format(_ t: TimeInterval) -> String {

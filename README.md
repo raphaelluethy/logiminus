@@ -1,58 +1,82 @@
+<p align="center"><img src="docs/icon.png" width="128" alt="Logiminus icon"></p>
+
 # Logiminus
 
-A small replacement for Logi Options+ for the **Logitech Spotlight 2** presenter on macOS:
-a menu bar agent plus a CLI (for Raycast script commands).
+A tiny macOS menu bar app (and CLI) that drives the **Logitech Spotlight 2** presentation
+remote — laser pointer, spotlight, slide navigation and haptics — without Logi Options+.
 
-- Light press + hold top button → laser pointer dot, moved by the remote's gyro
-- Hard press → spotlight (dims the screen around a circle)
-- Next / Back → → / ←; holding Back sends ⇧B (black screen) during a presentation,
-  otherwise it steps back repeatedly
-- Haptics level, presentation timer with haptic alerts, battery in the menu
-- The overlay is a non-activating panel and no event taps are installed, so it
-  never steals focus or slows the keyboard
+> **Not affiliated with Logitech.** This is an independent project, born out of necessity:
+> Logi Options+ kept randomly stealing window focus and lagging out my keyboard. Logiminus does
+> the few things I need from it, and nothing else. Logitech and Spotlight are trademarks of
+> Logitech.
 
-Currently supports the Bolt USB receiver; Bluetooth is next.
+## What it does
 
-## Build & install
+| On the remote | What happens |
+|---|---|
+| Top button, light press + hold | Red laser dot, moved by pointing the remote |
+| Top button, hard press | Spotlight — the screen dims around a circle |
+| Next / Back | → / ← (next / previous slide) |
+| Hold Next | Next slide |
+| Hold Back | ⇧B (black screen) during a presentation, otherwise steps back repeatedly |
+
+Plus, from the menu bar: pointer/spotlight size and speed, which effect light and hard press
+trigger, haptic feedback strength, a presentation timer that vibrates 5 min and 1 min before
+the end, and the battery level.
+
+Works with multiple displays: the pointer starts on the screen showing your slideshow (or pick
+a display in the menu) and can be moved across screens. The overlay never takes focus and the
+app installs no keyboard hooks.
+
+Currently connects through the Logitech USB receiver. Bluetooth support is in progress.
+
+## Install
+
+Requires macOS 13+ and Xcode command line tools (`xcode-select --install`).
 
 ```sh
-scripts/build-app.sh --install   # → ~/Applications/Logiminus.app, CLI → ~/.local/bin/logiminus
+git clone https://github.com/raphaelluethy/logiminus.git
+cd logiminus
+scripts/build-app.sh --install
 ```
 
-The app needs **Accessibility** permission (to send arrow keys). It is signed with the
-first Apple Development identity found (override with `LOGIMINUS_SIGN_IDENTITY`), so the
-permission survives rebuilds. Quit Logi Options+ — both cannot drive the device at once.
+This builds `~/Applications/Logiminus.app`, links the CLI to `~/.local/bin/logiminus` and
+starts the app. Then:
 
-## CLI
+1. **Grant Accessibility** when asked (System Settings → Privacy & Security → Accessibility).
+   It is needed to send the arrow keys.
+2. **Quit Logi Options+** — two apps can't drive the remote at once. To stop it until the next
+   login: `launchctl bootout gui/$(id -u)/com.logi.cp-dev-mgr`.
+3. Optional: add Logiminus to System Settings → General → Login Items.
 
-```
-logiminus enable | disable | toggle | status
-logiminus haptic <waveform>
-logiminus timer start [minutes] | stop
+The build is signed with your first Apple Development identity if you have one (so the
+Accessibility permission survives rebuilds), otherwise ad-hoc. Override with
+`LOGIMINUS_SIGN_IDENTITY="…"`.
+
+## Use
+
+Everything is in the menu bar icon. The CLI talks to the running app:
+
+```sh
+logiminus enable      # take over the remote (starts the app if needed)
+logiminus disable     # hand the buttons back to the remote's built-in behaviour
+logiminus toggle
+logiminus status      # e.g. "enabled · Spotlight 2 connected · battery 50%"
+logiminus timer start 20 | stop
+logiminus haptic 17   # play a vibration pattern
 logiminus quit
-logiminus monitor [--divert] [-v]     # debug: print HID++ traffic
 ```
 
-`enable`/`toggle` start the app if it is not running. `disable` hands the buttons back to the
-device's native behaviour. Raycast script commands are in `raycast/` — add that folder
-under Raycast → Extensions → Script Commands.
+### Raycast
 
-## Protocol notes (HID++ 2.0, reverse engineered)
+The `raycast/` folder contains script commands for enable, disable and toggle. In Raycast:
+Settings → Extensions → Script Commands → Add Directories → pick the `raycast` folder.
 
-The Spotlight 2 sits behind a Bolt receiver (`046d:c548`, vendor collection usage page
-`0xFF00`) and may show up in more than one pairing slot. It sleeps after a few seconds idle;
-the receiver then answers `8F … 04` until a request wakes it, and announces wake-ups with
-`0x41` connection notifications.
+## How it works
 
-| Index | Feature | Use |
-|---|---|---|
-| 0x09 | 0x1004 Unified battery | fn1 → `[percent, level, charging]` |
-| 0x0B | 0x1B04 Reprog controls v4 | fn3 setCidReporting `[cid, flags, remap]`; events fn0 buttons, fn1 raw XY |
-| 0x0F | 0x19B0 Haptics | fn1/fn2 get/set `[enabled, level]`, fn3 play `[waveform]` |
-| 0x10 | 0x19C0 Force sensing button | fn1 capabilities, fn2 current force |
+Logiminus speaks Logitech's HID++ 2.0 protocol to the remote through the receiver: it diverts
+the buttons (feature `0x1B04`) so they are reported to the app instead of acting natively,
+receives the gyro motion as raw XY deltas, and drives the haptics motor (`0x19B0`). Protocol
+notes from reverse engineering are in [docs/protocol.md](docs/protocol.md).
 
-Control IDs: `0x50` top tap, `0xD8` top light hold (raw XY), `0x1A8` top hard press (replaces
-`0xD8`, raw XY), `0xD9`/`0xDA` next click/hold, `0xDB`/`0xDC` back click/hold, `0xFB`
-start/stop presentation, `0x1B0` haptic trigger. Holding Next + Back together is handled by
-the firmware (Bluetooth pairing mode) and is never reported; the device drops off the receiver
-and may re-appear in another slot. Raw XY: signed 16-bit big-endian dx, dy.
+`logiminus monitor [--divert] [-v]` prints the device traffic for debugging.
