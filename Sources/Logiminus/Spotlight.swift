@@ -193,6 +193,7 @@ final class SpotlightController {
 
     private func attach(_ d: HIDPPDevice, name: String) {
         device = d
+        originalLayers = [:]
         linked = true
         do {
             let reprog = try d.featureIndex(Feature.reprogControls)
@@ -247,6 +248,28 @@ final class SpotlightController {
             }
         }
         Log.info("diversion \(wantDiverted ? "on" : "off")")
+        configureForceLayers(d)
+    }
+
+    /// Original force-layer masks per button, restored when we hand the device back.
+    private var originalLayers: [UInt8: UInt8] = [:]
+
+    /// The hard press is a second force "layer" that is per host and off by default
+    /// (Options+ only enabled it on the receiver connection). 0x19C0 fn5/fn6 get/set
+    /// `[button, mask]`, bit0 = light, bit1 = hard.
+    private func configureForceLayers(_ d: HIDPPDevice) {
+        guard let count = try? d.call(Feature.forceSensing, 0).first else { return }
+        for button in 0..<count {
+            do {
+                if originalLayers[button] == nil {
+                    originalLayers[button] = try d.call(Feature.forceSensing, 5, [button]).first
+                }
+                let mask: UInt8 = wantDiverted ? 0x03 : originalLayers[button] ?? 0x01
+                _ = try d.call(Feature.forceSensing, 6, [button, mask])
+            } catch {
+                Log.info("force layers \(button): \(error)")
+            }
+        }
     }
 
     private func readBattery(_ d: HIDPPDevice) {

@@ -36,11 +36,16 @@ it and nothing is reported.
 | 0x0C / 0x0D | 0x1814 / 0x1815 Change host / hosts info | |
 | 0x0E | 0x2250 | unknown |
 | 0x0F | 0x19B0 Haptics (v3) | fn0 capabilities, fn1 get / fn2 set `[enabled, level]`, fn3 play `[waveform]`, fn4 playing waveform |
-| 0x10 | 0x19C0 Force sensing button (v2) | fn0 count, fn1 capabilities, fn2 current force |
+| 0x10 | 0x19C0 Force sensing button (v2) | fn0 count, fn1 button capabilities, fn2 get / fn3 set button config, fn4 reset button config, fn5 get / fn6 set layers `[button, mask]` |
 | 0x11 | 0x1A01 | unknown (presenter) |
 | 0x12 | 0x2205 Pointer motion scaling | |
 
 Options+ stores haptic level 35 and enabled; waveform 17 is called `belly_breathing`.
+
+**Hard press needs force layer 2.** The layer mask (bit0 = light, bit1 = hard) is per host
+and defaults to `0x01`, so the remote never reports the hard press (`0x1A8`) and gives no haptic
+click until the host enables it with fn6 `[0, 0x03]`. Options+ only ever did this on the
+receiver connection, which is why the hard press "worked" there but not over Bluetooth.
 
 The force-sensing capability layout follows Options+' protobuf (`button_index, min_force,
 default_force, max_force, high_force, force_change_capability, layer_config_capability,
