@@ -8,13 +8,13 @@ final class Agent: NSObject {
     let controller: SpotlightController
     private var overlay: Overlay!
     private let presentation = PresentationControl()
+    private let screens = ScreenPicker()
     private var menu: MenuBar!
     private var server: IPC.Server!
     let timer = PresentationTimer()
 
     private var pressed = Set<UInt16>()
     private var repeatTimer: Timer?
-    private var motionRemainder = (x: 0.0, y: 0.0)
 
     override init() {
         controller = SpotlightController(diverted: Settings.shared.enabled)
@@ -176,10 +176,11 @@ final class Agent: NSObject {
         }
         guard effect != overlay.effect else { return }
         if effect == .none {
+            screens.remember(overlay.screen)
             overlay.hide()
         } else if overlay.effect == .none {
-            motionRemainder = (0, 0)
-            overlay.show(effect, at: overlay.defaultStart())
+            let f = screens.startScreen(preference: settings.startScreen)?.frame ?? .zero
+            overlay.show(effect, at: CGPoint(x: f.midX, y: f.midY))
         } else {
             overlay.show(effect)
         }

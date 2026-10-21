@@ -60,6 +60,15 @@ final class MenuBar: NSObject, NSMenuDelegate {
         menu.addItem(submenu("Hard press", Effect.allCases.map { e in
             action(e.title, #selector(setHard(_:)), checked: settings.hardEffect == e, rep: e.rawValue)
         }))
+        var start = [
+            action("Automatic (presentation screen)", #selector(setStartScreen(_:)), checked: settings.startScreen == ScreenPicker.auto, rep: ScreenPicker.auto),
+            action("Screen with mouse pointer", #selector(setStartScreen(_:)), checked: settings.startScreen == ScreenPicker.mouse, rep: ScreenPicker.mouse),
+            NSMenuItem.separator(),
+        ]
+        start += NSScreen.screens.map { s in
+            action(s.localizedName, #selector(setStartScreen(_:)), checked: settings.startScreen == s.localizedName, rep: s.localizedName)
+        }
+        menu.addItem(submenu("Start on", start))
         menu.addItem(submenu("Pointer speed", [("Slow", 0.5), ("Normal", 1.0), ("Fast", 1.6), ("Very fast", 2.5)].map { t, v in
             action(t, #selector(setSpeed(_:)), checked: abs(settings.pointerSpeed - v) < 0.01, rep: v)
         }))
@@ -132,6 +141,7 @@ final class MenuBar: NSObject, NSMenuDelegate {
     }
     @objc private func setLight(_ i: NSMenuItem) { settings.lightEffect = Effect(rawValue: i.representedObject as! String)! }
     @objc private func setHard(_ i: NSMenuItem) { settings.hardEffect = Effect(rawValue: i.representedObject as! String)! }
+    @objc private func setStartScreen(_ i: NSMenuItem) { settings.startScreen = i.representedObject as! String }
     @objc private func setSpeed(_ i: NSMenuItem) { settings.pointerSpeed = i.representedObject as! Double }
     @objc private func setSize(_ i: NSMenuItem) { settings.spotlightSize = i.representedObject as! Double }
     @objc private func setDim(_ i: NSMenuItem) { settings.dimOpacity = i.representedObject as! Double }

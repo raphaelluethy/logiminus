@@ -104,13 +104,8 @@ final class Overlay {
         if wasEffect != .none { show(wasEffect, at: position) }
     }
 
-    /// Starting point: center of the screen that currently holds the mouse cursor.
-    func defaultStart() -> CGPoint {
-        let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
-        guard let f = screen?.frame else { return .zero }
-        return CGPoint(x: f.midX, y: f.midY)
-    }
+    /// The screen the highlight is currently on.
+    var screen: NSScreen? { active?.screen }
 
     func show(_ effect: Effect, at p: CGPoint? = nil) {
         if let p { position = p }

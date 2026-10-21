@@ -48,6 +48,7 @@ final class Settings {
             "hapticLevel": 35,
             "timerMinutes": 0,
             "startTimerWithPresentation": true,
+            "startScreen": "auto",
         ])
     }
 
@@ -67,6 +68,8 @@ final class Settings {
     var hapticsEnabled: Bool { get { d.bool(forKey: "hapticsEnabled") } set { d.set(newValue, forKey: "hapticsEnabled") } }
     var hapticLevel: Int { get { d.integer(forKey: "hapticLevel") } set { d.set(newValue, forKey: "hapticLevel") } }
     var timerMinutes: Int { get { d.integer(forKey: "timerMinutes") } set { d.set(newValue, forKey: "timerMinutes") } }
+    /// "auto", "mouse" or a display's localized name.
+    var startScreen: String { get { d.string(forKey: "startScreen") ?? "auto" } set { d.set(newValue, forKey: "startScreen") } }
     var startTimerWithPresentation: Bool {
         get { d.bool(forKey: "startTimerWithPresentation") }
         set { d.set(newValue, forKey: "startTimerWithPresentation") }
