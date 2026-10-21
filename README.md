@@ -21,7 +21,7 @@ remote — laser pointer, spotlight, slide navigation and haptics — without Lo
 | Hold Next | Next slide |
 | Hold Back | ⇧B (black screen) during a presentation, otherwise steps back repeatedly |
 
-Plus, from the menu bar: pointer/spotlight size and speed, which effect light and hard press
+Plus, from the menu bar: pointer/spotlight size and speed, jitter smoothing, which effect light and hard press
 trigger, haptic feedback strength, a presentation timer that vibrates 5 min and 1 min before
 the end, and the battery level.
 

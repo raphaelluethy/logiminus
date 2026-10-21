@@ -71,7 +71,10 @@ final class Overlay {
     private var entries: [Entry] = []
     private var active: Entry?
     private(set) var effect: Effect = .none
-    private(set) var position: CGPoint = .zero   // global Cocoa coordinates
+    private(set) var position: CGPoint = .zero   // drawn (smoothed), global Cocoa coordinates
+    private var target: CGPoint = .zero          // where the raw motion puts it
+    private var smoother = PointSmoother(level: .off)
+    private var settleTimer: Timer?
     private let settings = Settings.shared
 
     init() {
@@ -104,6 +107,8 @@ final class Overlay {
         }
         active = nil
         position = clamp(position)   // the old spot may no longer be on any display
+        target = clamp(target)
+        smoother.reset()
         if wasEffect != .none { show(wasEffect, at: position) }
     }
 
@@ -111,7 +116,11 @@ final class Overlay {
     var screen: NSScreen? { active?.screen }
 
     func show(_ effect: Effect, at p: CGPoint? = nil) {
-        if let p { position = p }
+        if let p {
+            position = p
+            target = p
+            smoother = PointSmoother(level: settings.smoothing)
+        }
         self.effect = effect
         if effect == .none { hide(); return }
         update()
@@ -120,11 +129,34 @@ final class Overlay {
     /// Moves by device deltas (y grows downward on the device).
     func move(dx: Double, dy: Double) {
         guard effect != .none else { return }
-        position = clamp(CGPoint(x: position.x + dx, y: position.y - dy))
+        target = clamp(CGPoint(x: target.x + dx, y: target.y - dy))
+        step()
+        scheduleSettle()
+    }
+
+    private func step() {
+        position = clamp(smoother.smooth(target, at: CACurrentMediaTime()))
         update()
     }
 
+    /// When motion events stop, keep filtering at display rate until the drawn
+    /// position has caught up with the target (otherwise it would rest short of it).
+    private func scheduleSettle() {
+        settleTimer?.invalidate()
+        settleTimer = Timer.common(after: 0.03) { [weak self] _ in
+            self?.settleTimer = Timer.common(after: 1.0 / 60, repeating: true) { t in
+                guard let self, self.effect != .none,
+                      hypot(self.position.x - self.target.x, self.position.y - self.target.y) > 0.5 else {
+                    t.invalidate()
+                    return
+                }
+                self.step()
+            }
+        }
+    }
+
     func hide() {
+        settleTimer?.invalidate()
         effect = .none
         active?.panel.orderOut(nil)
         active = nil

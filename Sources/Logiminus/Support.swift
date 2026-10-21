@@ -56,6 +56,7 @@ final class Settings {
             "startTimerWithPresentation": true,
             "startScreen": "auto",
             "tapAction": TapAction.none.rawValue,
+            "smoothing": Smoothing.medium.rawValue,
         ])
     }
 
@@ -75,6 +76,10 @@ final class Settings {
     var hapticsEnabled: Bool { get { d.bool(forKey: "hapticsEnabled") } set { d.set(newValue, forKey: "hapticsEnabled") } }
     var hapticLevel: Int { get { d.integer(forKey: "hapticLevel") } set { d.set(newValue, forKey: "hapticLevel") } }
     var timerMinutes: Int { get { d.integer(forKey: "timerMinutes") } set { d.set(newValue, forKey: "timerMinutes") } }
+    var smoothing: Smoothing {
+        get { Smoothing(rawValue: d.integer(forKey: "smoothing")) ?? .medium }
+        set { d.set(newValue.rawValue, forKey: "smoothing") }
+    }
     var tapAction: TapAction {
         get { TapAction(rawValue: d.string(forKey: "tapAction") ?? "") ?? .none }
         set { d.set(newValue.rawValue, forKey: "tapAction") }

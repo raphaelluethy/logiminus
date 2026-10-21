@@ -107,6 +107,9 @@ final class MenuBar: NSObject, NSMenuDelegate {
         menu.addItem(submenu("Top button tap", TapAction.allCases.map { a in
             action(a.title, #selector(setTapAction(_:)), checked: settings.tapAction == a, rep: a.rawValue)
         }))
+        menu.addItem(submenu("Pointer smoothing", Smoothing.allCases.map { l in
+            action(l.title, #selector(setSmoothing(_:)), checked: settings.smoothing == l, rep: l.rawValue)
+        }))
         menu.addItem(submenu("Pointer speed", [("Slow", 0.5), ("Normal", 1.0), ("Fast", 1.6), ("Very fast", 2.5)].map { t, v in
             action(t, #selector(setSpeed(_:)), checked: abs(settings.pointerSpeed - v) < 0.01, rep: v)
         }))
@@ -186,6 +189,7 @@ final class MenuBar: NSObject, NSMenuDelegate {
     }
     @objc private func setLight(_ i: NSMenuItem) { settings.lightEffect = Effect(rawValue: i.representedObject as! String)! }
     @objc private func setHard(_ i: NSMenuItem) { settings.hardEffect = Effect(rawValue: i.representedObject as! String)! }
+    @objc private func setSmoothing(_ i: NSMenuItem) { settings.smoothing = Smoothing(rawValue: i.representedObject as! Int)! }
     @objc private func setTapAction(_ i: NSMenuItem) { settings.tapAction = TapAction(rawValue: i.representedObject as! String)! }
     @objc private func setStartScreen(_ i: NSMenuItem) { settings.startScreen = i.representedObject as! String }
     @objc private func setSpeed(_ i: NSMenuItem) { settings.pointerSpeed = i.representedObject as! Double }
