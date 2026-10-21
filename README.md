@@ -52,4 +52,6 @@ the receiver then answers `8F … 04` until a request wakes it, and announces wa
 
 Control IDs: `0x50` top tap, `0xD8` top light hold (raw XY), `0x1A8` top hard press (replaces
 `0xD8`, raw XY), `0xD9`/`0xDA` next click/hold, `0xDB`/`0xDC` back click/hold, `0xFB`
-start/stop presentation, `0x1B0` haptic trigger. Raw XY: signed 16-bit big-endian dx, dy.
+start/stop presentation, `0x1B0` haptic trigger. Holding Next + Back together is handled by
+the firmware (Bluetooth pairing mode) and is never reported; the device drops off the receiver
+and may re-appear in another slot. Raw XY: signed 16-bit big-endian dx, dy.
