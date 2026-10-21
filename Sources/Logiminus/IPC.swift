@@ -92,6 +92,10 @@ enum IPC {
                 $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) }
             }
             guard r == 0, listen(fd, 8) == 0 else { throw ServerError.socket(errno) }
+            // Accepted sockets inherit SO_NOSIGPIPE from here. Setting it after accept is too
+            // late when the client already hung up: setsockopt then fails on the dead socket.
+            var on: Int32 = 1
+            setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
             chmod(path, 0o600)
             var st = stat()
             if stat(path, &st) == 0 { inode = st.st_ino }

@@ -74,6 +74,7 @@ final class Overlay {
     private(set) var position: CGPoint = .zero   // drawn (smoothed), global Cocoa coordinates
     private var target: CGPoint = .zero          // where the raw motion puts it
     private var smoother = PointSmoother(level: .off)
+    private var gate = DeltaGate(level: .off)
     private var settleTimer: Timer?
     private let settings = Settings.shared
 
@@ -120,15 +121,18 @@ final class Overlay {
             position = p
             target = p
             smoother = PointSmoother(level: settings.smoothing)
+            gate = DeltaGate(level: settings.smoothing)
         }
         self.effect = effect
         if effect == .none { hide(); return }
         update()
     }
 
-    /// Moves by device deltas (y grows downward on the device).
-    func move(dx: Double, dy: Double) {
+    /// Moves by device deltas (y grows downward on the device), scaled by `speed`.
+    func move(dx: Double, dy: Double, speed: Double) {
         guard effect != .none else { return }
+        let (gx, gy) = gate.apply(dx: dx, dy: dy)
+        let dx = gx * speed, dy = gy * speed
         target = clamp(CGPoint(x: target.x + dx, y: target.y - dy))
         step()
         scheduleSettle()

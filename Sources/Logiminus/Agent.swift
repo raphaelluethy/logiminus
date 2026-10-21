@@ -217,8 +217,7 @@ final class Agent: NSObject {
 
     private func motion(_ dx: Int, _ dy: Int) {
         guard enabled, overlay.effect != .none else { return }
-        let k = settings.pointerSpeed
-        overlay.move(dx: Double(dx) * k, dy: Double(dy) * k)
+        overlay.move(dx: Double(dx), dy: Double(dy), speed: settings.pointerSpeed)
     }
 }
 

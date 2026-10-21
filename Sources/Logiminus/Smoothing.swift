@@ -90,6 +90,24 @@ struct PointSmoother {
     }
 }
 
+/// Soft dead zone on the raw motion deltas. Holding the remote still produces a
+/// trickle of ±1-unit deltas that would add up to a slow drift; this drops motion
+/// whose recent average magnitude is that small and ramps smoothly to full motion.
+struct DeltaGate {
+    let level: Smoothing
+    private var average = 0.0   // recent mean delta magnitude (device units per event)
+
+    init(level: Smoothing) { self.level = level }
+
+    mutating func apply(dx: Double, dy: Double) -> (Double, Double) {
+        guard let (lo, hi) = level.deadZone else { return (dx, dy) }
+        average += 0.3 * (hypot(dx, dy) - average)
+        let t = min(max((average - lo) / (hi - lo), 0), 1)
+        let gain = t * t * (3 - 2 * t)   // smoothstep
+        return (dx * gain, dy * gain)
+    }
+}
+
 enum Smoothing: Int, CaseIterable {
     case off = 0, low, medium, high
 
@@ -109,6 +127,17 @@ enum Smoothing: Int, CaseIterable {
         case .low: return 2.5
         case .medium: return 1.2
         case .high: return 0.6
+        }
+    }
+
+    /// Average delta magnitude (device units/event) below which motion is dropped,
+    /// and above which it passes unchanged. At rest the remote reports ~1 unit/event.
+    var deadZone: (Double, Double)? {
+        switch self {
+        case .off: return nil
+        case .low: return (0.8, 2.0)
+        case .medium: return (1.1, 2.5)
+        case .high: return (1.4, 3.2)
         }
     }
 

@@ -44,3 +44,33 @@ final class SmoothingTests: XCTestCase {
         XCTAssertEqual(s.smooth(p, at: 0.01), p)
     }
 }
+
+final class DeltaGateTests: XCTestCase {
+    /// The resting pattern captured from the remote: ±1 deltas, often several in a row.
+    func testRestingTrickleBarelyMoves() {
+        var g = DeltaGate(level: .medium)
+        let rest: [(Double, Double)] = [(0, 1), (0, 1), (-1, 0), (-1, 0), (-1, 0), (-1, 0), (-1, 0), (0, 1), (0, 1), (0, 1),
+                                         (-1, 0), (-1, -1), (-1, 0), (-1, 0), (1, 0), (-1, 0), (-1, 0), (1, 0), (-1, 0), (-1, 0)]
+        var x = 0.0, y = 0.0, rawX = 0.0
+        for (dx, dy) in rest + rest + rest {
+            let (gx, gy) = g.apply(dx: dx, dy: dy)
+            x += gx; y += gy; rawX += dx
+        }
+        XCTAssertLessThan(abs(x), abs(rawX) * 0.1, "drift should be mostly removed")
+        XCTAssertLessThan(abs(y), 2)
+    }
+
+    func testDeliberateMotionPassesUnchanged() {
+        var g = DeltaGate(level: .medium)
+        var out = (0.0, 0.0)
+        for _ in 0..<10 { out = g.apply(dx: 4, dy: -3) }
+        XCTAssertEqual(out.0, 4, accuracy: 0.01)
+        XCTAssertEqual(out.1, -3, accuracy: 0.01)
+    }
+
+    func testOffIsIdentity() {
+        var g = DeltaGate(level: .off)
+        let out = g.apply(dx: 1, dy: 0)
+        XCTAssertEqual(out.0, 1)
+    }
+}
