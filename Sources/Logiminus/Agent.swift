@@ -116,12 +116,13 @@ final class Agent: NSObject {
         let s = controller.status
         var out = enabled ? "enabled" : "disabled"
         if s.connected {
-            out += " · \(s.name) connected"
+            out += " · \(s.name) connected via \(s.receiver)"
             if let b = s.battery { out += " · battery \(b)%" }
         } else {
             out += " · device not connected"
         }
         if !Keys.accessibilityTrusted { out += " · ⚠︎ Accessibility permission missing" }
+        if s.needsInputMonitoring { out += " · ⚠︎ Input Monitoring permission needed for Bluetooth" }
         return out
     }
 

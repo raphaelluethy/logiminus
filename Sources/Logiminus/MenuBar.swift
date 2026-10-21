@@ -70,6 +70,9 @@ final class MenuBar: NSObject, NSMenuDelegate {
         var line = st.connected ? "\(st.name) — connected via \(st.receiver)" : "Spotlight not connected"
         if st.connected, let b = st.battery { line += " · \(b)%\(st.charging ? " ⚡︎" : "")" }
         menu.addItem(label(line))
+        if st.needsInputMonitoring {
+            menu.addItem(action("⚠︎ Grant Input Monitoring (needed for Bluetooth)…", #selector(grantInputMonitoring)))
+        }
         if !Keys.accessibilityTrusted {
             menu.addItem(action("⚠︎ Grant Accessibility permission…", #selector(grantAccessibility)))
         }
@@ -170,6 +173,9 @@ final class MenuBar: NSObject, NSMenuDelegate {
     @objc private func grantAccessibility() {
         Keys.promptForAccessibility()
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+    }
+    @objc private func grantInputMonitoring() {
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!)
     }
     @objc private func setLight(_ i: NSMenuItem) { settings.lightEffect = Effect(rawValue: i.representedObject as! String)! }
     @objc private func setHard(_ i: NSMenuItem) { settings.hardEffect = Effect(rawValue: i.representedObject as! String)! }

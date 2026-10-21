@@ -1,4 +1,5 @@
 import Foundation
+import IOKit.hid
 
 /// Control IDs of the Spotlight 2 (feature 0x1B04), as reported by the device.
 enum CID {
@@ -23,9 +24,10 @@ enum CID {
 struct DeviceStatus {
     var connected = false
     var name = ""
-    var receiver = ""
+    var receiver = ""   // "USB receiver" or "Bluetooth"
     var battery: Int?
     var charging = false
+    var needsInputMonitoring = false
 }
 
 /// Finds the Spotlight on any attached receiver, keeps its configuration applied
@@ -72,6 +74,21 @@ final class SpotlightController {
             ctl.async {
                 self.transports.removeAll { $0 === t }
                 if self.device?.transport === t { self.detach() }
+            }
+        }
+        hid.onPermissionNeeded = { [weak self] in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.status.needsInputMonitoring = true
+                self.onStatus?(self.status)
+                IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
+            }
+        }
+        hid.onPermissionGranted = { [weak self] in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.status.needsInputMonitoring = false
+                self.onStatus?(self.status)
             }
         }
         hid.start()
@@ -138,7 +155,7 @@ final class SpotlightController {
     private func scan(_ t: HIDPPTransport) {
         guard device == nil || !linked else { return }
         // Receivers multiplex up to 6 devices; 0xFF addresses a directly connected one.
-        for i: UInt8 in [1, 2, 3, 4, 5, 6, 0xFF] {
+        for i: UInt8 in t.isBluetooth ? [0xFF] : [1, 2, 3, 4, 5, 6] {
             if probe(t, index: i) { return }
         }
     }
@@ -190,7 +207,7 @@ final class SpotlightController {
             return
         }
         Log.info(String(format: "found %@ on %@ (loc %08x, index %d)", name, d.transport.product, d.transport.location, d.index))
-        let receiver = d.transport.product
+        let receiver = d.transport.kind
         DispatchQueue.main.async {
             self.status.connected = true
             self.status.name = name

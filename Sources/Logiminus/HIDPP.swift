@@ -47,6 +47,8 @@ final class HIDPPTransport {
     let location: Int
     let productID: Int
     let product: String
+    /// Direct Bluetooth LE connection (HID++ in the 0xFF43 collection, device index 0xFF).
+    let isBluetooth: Bool
     var onReport: (([UInt8]) -> Void)?
 
     private let inputBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: 64)
@@ -71,13 +73,20 @@ final class HIDPPTransport {
         location = IOHIDDeviceGetProperty(device, kIOHIDLocationIDKey as CFString) as? Int ?? 0
         productID = IOHIDDeviceGetProperty(device, kIOHIDProductIDKey as CFString) as? Int ?? 0
         product = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? "?"
+        isBluetooth = (IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? "")
+            .localizedCaseInsensitiveContains("bluetooth")
     }
+
+    var kind: String { isBluetooth ? "Bluetooth" : "USB receiver" }
+
+    private(set) var openError: IOReturn = kIOReturnSuccess
 
     deinit { inputBuffer.deallocate() }
 
     /// Must be called on the HID thread.
     func open(runLoop: CFRunLoop) -> Bool {
-        guard IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone)) == kIOReturnSuccess else { return false }
+        openError = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        guard openError == kIOReturnSuccess else { return false }
         let ctx = Unmanaged.passUnretained(self).toOpaque()
         IOHIDDeviceRegisterInputReportCallback(device, inputBuffer, 64, { ctx, _, _, _, _, report, length in
             guard let ctx else { return }
@@ -223,6 +232,8 @@ enum Feature {
 final class HIDManager {
     var onAdded: ((HIDPPTransport) -> Void)?
     var onRemoved: ((HIDPPTransport) -> Void)?
+    var onPermissionNeeded: (() -> Void)?
+    var onPermissionGranted: (() -> Void)?
 
     private var manager: IOHIDManager!
     private var transports: [IOHIDDevice: HIDPPTransport] = [:]
@@ -234,7 +245,10 @@ final class HIDManager {
             runLoop = CFRunLoopGetCurrent()
             manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
             let matching: [[String: Any]] = [
+                // Receivers: vendor collection is a top-level device.
                 [kIOHIDVendorIDKey: 0x046D, kIOHIDPrimaryUsagePageKey: 0xFF00],
+                // Bluetooth LE devices: HID++ lives in a secondary 0xFF43/0x0202 collection.
+                [kIOHIDVendorIDKey: 0x046D, kIOHIDDeviceUsagePageKey: 0xFF43, kIOHIDDeviceUsageKey: 0x0202],
             ]
             IOHIDManagerSetDeviceMatchingMultiple(manager, matching as CFArray)
             let ctx = Unmanaged.passUnretained(self).toOpaque()
@@ -258,7 +272,13 @@ final class HIDManager {
     private func added(_ device: IOHIDDevice) {
         let t = HIDPPTransport(device: device)
         guard t.open(runLoop: runLoop) else {
-            Log.info(String(format: "could not open %@ (loc %08x)", t.product, t.location))
+            Log.info(String(format: "could not open %@ (loc %08x): 0x%08x", t.product, t.location, t.openError))
+            // Bluetooth remotes also present a keyboard, which needs Input Monitoring access.
+            if t.openError == kIOReturnNotPermitted {
+                blocked.insert(device)
+                onPermissionNeeded?()
+                retryWhenPermitted()
+            }
             return
         }
         transports[device] = t
@@ -266,7 +286,28 @@ final class HIDManager {
         onAdded?(t)
     }
 
+    /// Devices that could not be opened for lack of Input Monitoring access.
+    private var blocked = Set<IOHIDDevice>()
+    private var retryTimer: CFRunLoopTimer?
+
+    /// Polls the permission and opens the blocked devices once it is granted.
+    private func retryWhenPermitted() {
+        guard retryTimer == nil else { return }
+        let timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + 2, 2, 0, 0) { [weak self] timer in
+            guard let self, IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted else { return }
+            CFRunLoopTimerInvalidate(timer)
+            self.retryTimer = nil
+            let devices = self.blocked
+            self.blocked.removeAll()
+            devices.forEach(self.added)
+            self.onPermissionGranted?()
+        }
+        retryTimer = timer
+        CFRunLoopAddTimer(runLoop, timer, .defaultMode)
+    }
+
     private func removed(_ device: IOHIDDevice) {
+        blocked.remove(device)
         guard let t = transports.removeValue(forKey: device) else { return }
         Log.info(String(format: "detached %@ loc=%08x", t.product, t.location))
         t.close()

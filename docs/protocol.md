@@ -15,6 +15,12 @@ It sleeps after a few seconds idle. The receiver then answers requests with
 about a second. On wake-up the receiver sends a `0x41` connection notification
 (`10 <slot> 41 …`, bit 6 of byte 4 set = link lost).
 
+Over **Bluetooth LE** the remote (`046d:b506`) is a single HID device whose primary usage is
+keyboard; HID++ lives in a secondary vendor collection (usage page `0xFF43`, usage `0x0202`,
+report id `0x11` only) and the remote is addressed as device index `0xFF`. Because of the
+keyboard collection, opening it requires Input Monitoring permission (`kIOReturnNotPermitted`
+otherwise). The same feature indices and control IDs apply.
+
 Holding Next + Back together puts the remote into Bluetooth pairing mode; the firmware handles
 it and nothing is reported.
 

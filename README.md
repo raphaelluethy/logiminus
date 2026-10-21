@@ -28,7 +28,7 @@ Works with multiple displays: the pointer starts on the screen showing your slid
 a display in the menu) and can be moved across screens. The overlay never takes focus and the
 app installs no keyboard hooks.
 
-Currently connects through the Logitech USB receiver. Bluetooth support is in progress.
+Works over Bluetooth and through the Logitech USB receiver.
 
 ## Install
 
@@ -45,6 +45,8 @@ starts the app. Then:
 
 1. **Grant Accessibility** when asked (System Settings → Privacy & Security → Accessibility).
    It is needed to send the arrow keys.
+   For Bluetooth, also grant **Input Monitoring** — macOS treats the remote as a keyboard, so
+   the app needs it to talk to the device at all.
 2. **Quit Logi Options+** — two apps can't drive the remote at once. To stop it until the next
    login: `launchctl bootout gui/$(id -u)/com.logi.cp-dev-mgr`.
 3. Optional: menu bar icon → **Open at Login** (or `logiminus login on`).
