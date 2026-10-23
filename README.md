@@ -33,6 +33,14 @@ Works with multiple displays: the pointer starts on the screen showing your slid
 a display in the menu) and can be moved across screens. The overlay never takes focus and the
 app installs no keyboard hooks.
 
+Works in video calls: when you share a single window (instead of the whole screen), the call
+only transmits that app's pixels plus the mouse cursor, so no overlay can show up there. By
+default, whenever no full-screen slideshow is running, the pointer therefore turns the mouse
+cursor itself into the red dot and moves it (menu → Mouse cursor); the spotlight still dims
+locally and moves the dot cursor for the viewers. The cursor goes back to normal when you let
+go. Inside a slideshow the overlay alone is used, so Keynote and PowerPoint don't pop up their
+own cursor and controls — share the whole screen there.
+
 Works over Bluetooth and through the Logitech USB receiver.
 
 ## Install

@@ -35,6 +35,33 @@ enum Effect: String, CaseIterable {
     }
 }
 
+/// Whether the system mouse cursor is moved along with the highlight.
+///
+/// A window share (Teams, Zoom, Meet, … sharing one app instead of the whole screen)
+/// captures only that app's pixels plus the system cursor, so the overlay never shows
+/// up for the viewers — the cursor does.
+enum CursorFollow: String, CaseIterable {
+    case windowed, always, never
+
+    var title: String {
+        switch self {
+        case .windowed: return "Follows the pointer outside slideshows"
+        case .always: return "Always follows the pointer"
+        case .never: return "Stays where it is"
+        }
+    }
+
+    /// `presenting`: a full-screen slideshow is on screen (where moving the mouse would
+    /// make the presentation app show its own cursor and controls).
+    func applies(presenting: Bool) -> Bool {
+        switch self {
+        case .windowed: return !presenting
+        case .always: return true
+        case .never: return false
+        }
+    }
+}
+
 /// Persistent user settings (UserDefaults domain gg.lty.logiminus).
 final class Settings {
     static let shared = Settings()
@@ -57,6 +84,7 @@ final class Settings {
             "startScreen": "auto",
             "tapAction": TapAction.none.rawValue,
             "smoothing": Smoothing.medium.rawValue,
+            "cursorFollow": CursorFollow.windowed.rawValue,
         ])
     }
 
@@ -83,6 +111,10 @@ final class Settings {
     var tapAction: TapAction {
         get { TapAction(rawValue: d.string(forKey: "tapAction") ?? "") ?? .none }
         set { d.set(newValue.rawValue, forKey: "tapAction") }
+    }
+    var cursorFollow: CursorFollow {
+        get { CursorFollow(rawValue: d.string(forKey: "cursorFollow") ?? "") ?? .windowed }
+        set { d.set(newValue.rawValue, forKey: "cursorFollow") }
     }
     /// "auto", "mouse" or a display UUID (older versions stored the display name).
     var startScreen: String { get { d.string(forKey: "startScreen") ?? "auto" } set { d.set(newValue, forKey: "startScreen") } }

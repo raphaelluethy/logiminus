@@ -116,6 +116,10 @@ final class MenuBar: NSObject, NSMenuDelegate {
         menu.addItem(submenu("Pointer size", [("Tiny", 7.0), ("Small", 11.0), ("Medium", 16.0), ("Large", 22.0)].map { t, v in
             action(t, #selector(setPointerSize(_:)), checked: abs(settings.pointerSize - v) < 0.01, rep: v)
         }))
+        menu.addItem(submenu("Mouse cursor", [label("Needed to see the pointer when sharing a single window"), .separator()]
+            + CursorFollow.allCases.map { c in
+                action(c.title, #selector(setCursorFollow(_:)), checked: settings.cursorFollow == c, rep: c.rawValue)
+            }))
         menu.addItem(submenu("Spotlight size", [("Small", 0.12), ("Medium", 0.18), ("Large", 0.26)].map { t, v in
             action(t, #selector(setSize(_:)), checked: abs(settings.spotlightSize - v) < 0.01, rep: v)
         }))
@@ -190,6 +194,7 @@ final class MenuBar: NSObject, NSMenuDelegate {
     @objc private func setLight(_ i: NSMenuItem) { settings.lightEffect = Effect(rawValue: i.representedObject as! String)! }
     @objc private func setHard(_ i: NSMenuItem) { settings.hardEffect = Effect(rawValue: i.representedObject as! String)! }
     @objc private func setSmoothing(_ i: NSMenuItem) { settings.smoothing = Smoothing(rawValue: i.representedObject as! Int)! }
+    @objc private func setCursorFollow(_ i: NSMenuItem) { settings.cursorFollow = CursorFollow(rawValue: i.representedObject as! String)! }
     @objc private func setTapAction(_ i: NSMenuItem) { settings.tapAction = TapAction(rawValue: i.representedObject as! String)! }
     @objc private func setStartScreen(_ i: NSMenuItem) { settings.startScreen = i.representedObject as! String }
     @objc private func setSpeed(_ i: NSMenuItem) { settings.pointerSpeed = i.representedObject as! Double }

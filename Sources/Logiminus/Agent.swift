@@ -33,6 +33,7 @@ final class Agent: NSObject {
             Log.info("control socket: \(error)")
         }
 
+        Keys.allowCursorChangesInBackground()
         overlay = Overlay()
         menu = MenuBar(agent: self)
         controller.onButtons = { [weak self] in self?.buttons($0) }
@@ -119,6 +120,12 @@ final class Agent: NSObject {
             case "", "status": return "open at login: \(LoginItem.statusText)"
             default: return "error: usage: login on | off | status"
             }
+        case "press":
+            // Debug: simulate the top button (light | hard | none) without the remote.
+            let cids: [String: Set<UInt16>] = ["light": [CID.topLight], "hard": [CID.topHard], "none": []]
+            guard parts.count > 1, let set = cids[parts[1]] else { return "error: usage: press light | hard | none" }
+            buttons(set)
+            return "ok"
         case "quit":
             DispatchQueue.main.async { self.quit() }
             return "bye"
@@ -209,6 +216,8 @@ final class Agent: NSObject {
             overlay.hide()
         } else if overlay.effect == .none {
             let f = screens.startScreen(preference: settings.startScreen)?.frame ?? .zero
+            // Decided once per highlight: the window scan is too slow for every motion event.
+            overlay.followCursor = settings.cursorFollow.applies(presenting: screens.presentationScreen() != nil)
             overlay.show(effect, at: CGPoint(x: f.midX, y: f.midY))
         } else {
             overlay.show(effect)

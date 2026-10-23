@@ -23,6 +23,32 @@ enum Keys {
         }
     }
 
+    /// Moves the mouse cursor to a point in global Cocoa coordinates (origin bottom-left
+    /// of the primary display) without generating mouse events, so the app underneath
+    /// doesn't react (and doesn't reset the cursor image).
+    static func warpMouse(to p: CGPoint) {
+        CGWarpMouseCursorPosition(Self.cgPoint(fromCocoa: p, primaryHeight: NSScreen.screens.first?.frame.height ?? 0))
+    }
+
+    /// A real mouse move to `p`: hands the cursor back to the app underneath.
+    static func moveMouse(to p: CGPoint) {
+        let cg = Self.cgPoint(fromCocoa: p, primaryHeight: NSScreen.screens.first?.frame.height ?? 0)
+        CGEvent(mouseEventSource: source, mouseType: .mouseMoved, mouseCursorPosition: cg, mouseButton: .left)?.post(tap: .cghidEventTap)
+    }
+
+    /// Lets this (background, menu bar) app set the cursor image. Normally only the app
+    /// under the cursor can; this window-server connection property (private, but used
+    /// by cursor utilities for well over a decade) lifts that. Call once at startup.
+    static func allowCursorChangesInBackground() {
+        let cid = CGSMainConnectionID()
+        _ = CGSSetConnectionProperty(cid, cid, "SetsCursorInBackground" as CFString, kCFBooleanTrue)
+    }
+
+    /// Cocoa global coordinates → Core Graphics global coordinates (origin top-left of the primary display).
+    static func cgPoint(fromCocoa p: CGPoint, primaryHeight: CGFloat) -> CGPoint {
+        CGPoint(x: p.x, y: primaryHeight - p.y)
+    }
+
     static var accessibilityTrusted: Bool { AXIsProcessTrusted() }
 
     static func promptForAccessibility() {
@@ -54,3 +80,7 @@ enum PresentationControl {
         return true
     }
 }
+
+@_silgen_name("CGSMainConnectionID") private func CGSMainConnectionID() -> UInt32
+@_silgen_name("CGSSetConnectionProperty")
+private func CGSSetConnectionProperty(_ cid: UInt32, _ owner: UInt32, _ key: CFString, _ value: CFTypeRef) -> Int32

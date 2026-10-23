@@ -34,12 +34,12 @@ private final class OverlayView: NSView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func render(effect: Effect, at p: CGPoint, settings: Settings) {
+    func render(effect: Effect, at p: CGPoint, settings: Settings, cursorIsPointer: Bool) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         dim.isHidden = effect != .spotlight
         ring.isHidden = effect != .spotlight
-        dot.isHidden = effect != .pointer
+        dot.isHidden = effect != .pointer || cursorIsPointer
         switch effect {
         case .spotlight:
             let r = bounds.height * settings.spotlightSize
@@ -72,6 +72,11 @@ final class Overlay {
     private var active: Entry?
     private(set) var effect: Effect = .none
     private(set) var position: CGPoint = .zero   // drawn (smoothed), global Cocoa coordinates
+    /// Also move the mouse cursor with the highlight (set before `show`). A single-window
+    /// share transmits only that app's pixels and the system cursor, never this overlay.
+    /// The cursor then *is* the pointer: it is drawn as the red dot and the overlay's dot is hidden.
+    var followCursor = false
+    private var cursorCache: (size: Double, cursor: NSCursor)?
     private var target: CGPoint = .zero          // where the raw motion puts it
     private var smoother = PointSmoother(level: .off)
     private var gate = DeltaGate(level: .off)
@@ -161,9 +166,14 @@ final class Overlay {
 
     func hide() {
         settleTimer?.invalidate()
+        let wasFollowing = effect != .none && followCursor
         effect = .none
         active?.panel.orderOut(nil)
         active = nil
+        if wasFollowing {
+            NSCursor.arrow.set()
+            Keys.moveMouse(to: position)   // the app underneath reasserts its own cursor
+        }
     }
 
     private func clamp(_ p: CGPoint) -> CGPoint {
@@ -186,7 +196,29 @@ final class Overlay {
             active = e
         }
         let f = e.screen.frame
-        e.view.render(effect: effect, at: CGPoint(x: position.x - f.minX, y: position.y - f.minY), settings: settings)
+        e.view.render(effect: effect, at: CGPoint(x: position.x - f.minX, y: position.y - f.minY), settings: settings,
+                      cursorIsPointer: followCursor)
         if !e.panel.isVisible { e.panel.orderFrontRegardless() }
+        if followCursor {
+            let s = settings.pointerSize
+            if cursorCache?.size != s { cursorCache = (s, Self.dotCursor(size: s)) }
+            Keys.warpMouse(to: position)
+            cursorCache!.cursor.set()
+        }
+    }
+
+    /// The pointer dot as a cursor image, hot spot in the centre.
+    private static func dotCursor(size s: Double) -> NSCursor {
+        let pad = 3.0, side = s + 2 * pad
+        let img = NSImage(size: NSSize(width: side, height: side), flipped: false) { _ in
+            let dot = NSBezierPath(ovalIn: NSRect(x: pad, y: pad, width: s, height: s))
+            NSColor(red: 1, green: 0.12, blue: 0.1, alpha: 0.95).setFill()
+            dot.fill()
+            NSColor(white: 1, alpha: 0.85).setStroke()
+            dot.lineWidth = 1.5
+            dot.stroke()
+            return true
+        }
+        return NSCursor(image: img, hotSpot: NSPoint(x: side / 2, y: side / 2))
     }
 }

@@ -38,3 +38,18 @@ final class PresentationTimerTests: XCTestCase {
         XCTAssertNil(t.remaining)
     }
 }
+
+final class CursorFollowTests: XCTestCase {
+    func testWindowedOnlyOutsideSlideshows() {
+        XCTAssertTrue(CursorFollow.windowed.applies(presenting: false))
+        XCTAssertFalse(CursorFollow.windowed.applies(presenting: true))
+        XCTAssertTrue(CursorFollow.always.applies(presenting: true))
+        XCTAssertFalse(CursorFollow.never.applies(presenting: false))
+    }
+
+    func testCocoaToCoreGraphicsFlipsY() {
+        // Top-left corner of a 1000 pt tall primary display, and a point on a display below it.
+        XCTAssertEqual(Keys.cgPoint(fromCocoa: CGPoint(x: 10, y: 1000), primaryHeight: 1000), CGPoint(x: 10, y: 0))
+        XCTAssertEqual(Keys.cgPoint(fromCocoa: CGPoint(x: 10, y: -200), primaryHeight: 1000), CGPoint(x: 10, y: 1200))
+    }
+}

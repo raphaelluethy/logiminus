@@ -12,6 +12,7 @@ usage:
   logiminus quit                                  quit the agent
   logiminus agent                                 run the menu bar agent in the foreground
   logiminus monitor                               (debug) print HID++ traffic, no agent
+  logiminus press light | hard | none             (debug) simulate the top button
 """
 
 // A CLI client may vanish mid-reply (e.g. a Raycast timeout); never die of SIGPIPE.
@@ -66,7 +67,7 @@ case "agent", "run":
 case "enable", "toggle":
     guard let r = launchAgentAndSend(args.joined(separator: " ")) else { exit(1) }
     print(r)
-case "disable", "status", "haptic", "timer", "login", "quit":
+case "disable", "status", "haptic", "timer", "login", "press", "quit":
     guard let r = IPC.send(args.joined(separator: " ")) else {
         print(args.first == "status" ? "not running" : "agent not running")
         exit(args.first == "disable" || args.first == "quit" ? 0 : 1)
